@@ -6,5 +6,5 @@ py -3 -m venv .venv || (echo Python not found. Install Python 3.11 64-bit from p
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 if not exist config.yaml copy config.example.yaml config.yaml
 echo.
-echo Setup complete. Edit config.yaml, then run:  .venv\Scripts\python.exe -m trade_copier check
+echo Setup complete. Double-click open_control_panel.bat to set up your accounts.
 pause

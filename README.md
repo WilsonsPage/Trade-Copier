@@ -27,6 +27,20 @@ It works from complete snapshots of the master rather than one-off events. So if
 
 ---
 
+## Control panel
+
+Double-click **`open_control_panel.bat`**. Your browser opens a page at `http://127.0.0.1:8765`. The page runs on your own PC only and is not on the internet. On it you can:
+
+- **Set roles:** add your accounts and mark each one as **Master**, **Slave** or **Off**. Switching which account is the master takes one click.
+- **Size each slave:** multiply or divide the master's lot (×10, ÷2), match account sizes automatically, use a fixed lot, or risk a % per trade. A preview shows what a 1.00 lot master trade becomes.
+- **Choose what gets copied:** reverse trades, buys or sells only, SL/TP, pending orders, max lot, max trades, drawdown limit, and symbol renames.
+- **Run it:** press **Start copying** and **Stop**, and use **Check connections** to test every terminal first.
+- **Watch it:** see live balance, equity and copied trades per account, plus the activity log.
+
+Settings are saved to `config.yaml`, the same file the command line uses, so you can switch between the two. Keep the panel's black window open while copying, because closing it stops the copier.
+
+---
+
 ## How it works
 
 ```
@@ -85,6 +99,8 @@ git clone https://github.com/WilsonsPage/Trade-Copier.git
 cd Trade-Copier
 .\setup.bat
 ```
+
+After setup, the easiest way to configure and run everything is the [control panel](#control-panel): double-click `open_control_panel.bat`. The steps below do the same from the command line.
 
 `setup.bat` does three things:
 
@@ -186,6 +202,7 @@ python -m pytest
 | `trade_copier/symbols.py`, `fx.py` | symbol mapping and currency conversion |
 | `trade_copier/broker.py` | the only file that talks to the `MetaTrader5` package |
 | `trade_copier/runner.py` | the one-process-per-terminal orchestration |
+| `trade_copier/ui/` | the local control panel (Python standard library server plus one HTML page) |
 
 ## Disclaimer
 

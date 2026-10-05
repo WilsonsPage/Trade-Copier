@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Copier</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --panel-2: #f8f9fb; --text: #1b1f24; --muted: #5d6673;
+  --border: #dde1e6; --accent: #2563eb; --accent-text: #ffffff; --good: #15803d; --bad: #c2410c;
+  --warn: #a16207; --master: #7c3aed; --slave: #0e7490; --off: #8a919b; --shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --panel: #1a1e24; --panel-2: #20252c; --text: #e7eaee; --muted: #9aa3ae;
+    --border: #2d333b; --accent: #4f8cff; --accent-text: #0b1220; --good: #4ade80; --bad: #fb923c;
+    --warn: #facc15; --master: #a78bfa; --slave: #22d3ee; --off: #6b7280; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--border); }
+.bar { max-width: 1100px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+h1 { font-size: 17px; margin: 0; font-weight: 650; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); }
+.dot.good { background: var(--good); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+.spacer { flex: 1; }
+button { font: inherit; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-weight: 550; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.danger { color: var(--bad); }
+button.small { padding: 4px 10px; font-size: 12px; }
+nav { max-width: 1100px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; }
+nav button { border: none; background: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 12px; color: var(--muted); }
+nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.banner { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid var(--border); background: var(--panel); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.banner.warn { border-color: var(--warn); } .banner.bad { border-color: var(--bad); }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.card-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.card-head .name { font-weight: 650; font-size: 15px; }
+.role { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.role button { border: none; border-radius: 0; padding: 5px 12px; background: var(--panel-2); color: var(--muted); font-size: 13px; }
+.role button + button { border-left: 1px solid var(--border); }
+.role button.on.master { background: var(--master); color: #fff; }
+.role button.on.slave { background: var(--slave); color: #fff; }
+.role button.on.off { background: var(--off); color: #fff; }
+.card-body { padding: 4px 16px 16px; }
+details { border-top: 1px solid var(--border); }
+details:first-child { border-top: none; }
+summary { cursor: pointer; padding: 12px 0; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+details[open] > summary::before { transform: rotate(90deg); }
+summary .hint { font-weight: 400; color: var(--muted); font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; padding-bottom: 12px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 550; }
+.field .help { font-size: 12px; color: var(--muted); margin-top: 3px; }
+input[type=text], input[type=number], input[type=password], select, textarea {
+  width: 100%; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px;
+}
+textarea { min-height: 70px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.check { display: flex; align-items: flex-start; gap: 8px; padding-top: 4px; }
+.check input { margin-top: 3px; width: 16px; height: 16px; }
+.check span small { display: block; color: var(--muted); font-size: 12px; }
+.sizing { display: grid; grid-template-columns: minmax(200px, 1.3fr) minmax(120px, .7fr) minmax(200px, 1.5fr); gap: 12px 16px; align-items: end; padding-bottom: 12px; }
+.preview { background: var(--panel-2); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.preview b { font-size: 15px; }
+.reverse-on { color: var(--bad); font-weight: 650; }
+.empty { text-align: center; color: var(--muted); padding: 30px; }
+.status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.stat .top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.stat .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+.stat .tag.master { color: var(--master); } .stat .tag.slave { color: var(--slave); }
+.stat .big { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.stat .row b { color: var(--text); font-weight: 550; font-variant-numeric: tabular-nums; }
+.stat .err { color: var(--bad); font-size: 12px; margin-top: 6px; word-break: break-word; }
+pre.log { background: #0d1117; color: #c9d1d9; border-radius: 10px; padding: 12px; height: 420px; overflow: auto; font-size: 12px; margin: 0; white-space: pre-wrap; word-break: break-word; }
+pre.log .e { color: #ff7b72; } pre.log .w { color: #e3b341; }
+#toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; z-index: 20; }
+#toast.show { opacity: 1; }
+dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); max-width: 760px; width: calc(100vw - 32px); padding: 0; }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+dialog .dh { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+dialog pre { margin: 0; padding: 14px 16px; max-height: 60vh; overflow: auto; font-size: 12px; white-space: pre-wrap; }
+.muted { color: var(--muted); }
+@media (max-width: 640px) { .sizing { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Trade Copier</h1>
+    <span class="pill" id="runPill"><span class="dot" id="runDot"></span><span id="runText">Loading…</span></span>
+    <span class="spacer"></span>
+    <button id="checkBtn" title="Connect to every terminal and report any problems">Check connections</button>
+    <button id="startBtn" class="primary">Start copying</button>
+    <button id="stopBtn" class="danger" hidden>Stop</button>
+  </div>
+  <nav>
+    <button data-tab="accounts" class="active">Accounts</button>
+    <button data-tab="status">Status &amp; log</button>
+    <button data-tab="general">General</button>
+  </nav>
+</header>
+
+<main>
+  <div id="banners"></div>
+
+  <section id="tab-accounts">
+    <div id="accounts"></div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+      <button id="addBtn">+ Add account</button>
+      <span class="spacer"></span>
+      <span class="muted" id="dirtyNote"></span>
+      <button id="saveBtn" class="primary" disabled>Save settings</button>
+    </div>
+  </section>
+
+  <section id="tab-status" hidden>
+    <div class="status-grid" id="statusGrid"></div>
+    <div class="card"><div class="card-head"><span class="name">Activity log</span><span class="spacer"></span>
+      <label class="check" style="padding:0"><input type="checkbox" id="followLog" checked><span>Follow</span></label></div>
+      <div style="padding:12px"><pre class="log" id="log"></pre></div></div>
+  </section>
+
+  <section id="tab-general" hidden>
+    <div class="card"><div class="card-body" style="padding-top:12px">
+      <div class="grid" id="generalFields"></div>
+      <p class="muted" style="margin:0">Settings are saved to <code id="cfgPath"></code>. The previous version is kept as a <code>.bak</code> file.</p>
+    </div></div>
+    <div style="display:flex; justify-content:flex-end"><button class="primary" id="saveBtn2" disabled>Save settings</button></div>
+  </section>
+</main>
+
+<dialog id="checkDialog">
+  <div class="dh"><b>Connection check</b><span class="spacer"></span><button class="small" onclick="this.closest('dialog').close()">Close</button></div>
+  <pre id="checkOut"></pre>
+</dialog>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let rawConfig = null;   // the config as loaded (keeps settings the panel doesn't show)
+let accounts = [];      // [{role, cfg (slave-shaped dict), masterOpts}]
+let general = {};
+let dirty = false;
+let lastStatus = null;
+
+const MASTER_KEYS = ["symbol_prefix", "symbol_suffix", "only_manual_trades"];
+const CONN_KEYS = ["name", "terminal_path", "login", "password", "server", "portable"];
+const SIZING = {
+  multiply: { label: "Multiply the master's lot", valueLabel: "Multiply by", step: "0.1", def: 1 },
+  divide:   { label: "Divide the master's lot", valueLabel: "Divide by", step: "0.1", def: 2 },
+  balance:  { label: "Match account size (balance)", valueLabel: "Then multiply by", step: "0.1", def: 1 },
+  equity:   { label: "Match account size (equity)", valueLabel: "Then multiply by", step: "0.1", def: 1 },
+  fixed:    { label: "Always the same lot size", valueLabel: "Lot size", step: "0.01", def: 0.1 },
+  risk:     { label: "Risk a % of equity per trade", valueLabel: "Risk %", step: "0.1", def: 1 },
+};
+
+// ---------------------------------------------------------------- api
+async function api(path, body) {
+  const opts = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+function toast(msg, ms = 2600) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+// ---------------------------------------------------------------- model
+function sizingOf(cfg) {
+  const lots = cfg.lots || {};
+  const mode = lots.mode || "multiplier";
+  const m = lots.multiplier ?? 1;
+  if (mode === "multiplier") return m < 1 && m > 0 ? { method: "divide", value: +(1 / m).toFixed(4) } : { method: "multiply", value: m };
+  if (mode === "balance_ratio") return { method: "balance", value: m };
+  if (mode === "equity_ratio") return { method: "equity", value: m };
+  if (mode === "fixed") return { method: "fixed", value: lots.fixed_lot ?? 0.1 };
+  return { method: "risk", value: lots.risk_percent ?? 1 };
+}
+function applySizing(cfg, method, value) {
+  const lots = (cfg.lots = cfg.lots || {});
+  const v = Number(value);
+  delete lots.fixed_lot; delete lots.risk_percent;
+  if (method === "multiply") { lots.mode = "multiplier"; lots.multiplier = v; }
+  if (method === "divide") { lots.mode = "multiplier"; lots.multiplier = v > 0 ? +(1 / v).toPrecision(10) : 1; }
+  if (method === "balance") { lots.mode = "balance_ratio"; lots.multiplier = v; }
+  if (method === "equity") { lots.mode = "equity_ratio"; lots.multiplier = v; }
+  if (method === "fixed") { lots.mode = "fixed"; lots.fixed_lot = v; lots.multiplier = 1; }
+  if (method === "risk") { lots.mode = "risk_percent"; lots.risk_percent = v; lots.multiplier = 1; }
+}
+
+function load(raw) {
+  rawConfig = raw;
+  general = { ...(raw.settings || {}) };
+  accounts = [];
+  const m = raw.master || {};
+  const masterOpts = {}; MASTER_KEYS.forEach((k) => { if (k in m) masterOpts[k] = m[k]; });
+  const mcfg = {}; CONN_KEYS.forEach((k) => { if (k in m) mcfg[k] = m[k]; });
+  mcfg.name = mcfg.name || "master";
+  accounts.push({ role: "master", cfg: mcfg, masterOpts });
+  (raw.slaves || []).forEach((s) => accounts.push({ role: s.enabled === false ? "off" : "slave", cfg: structuredClone(s), masterOpts: {} }));
+}
+
+function clean(obj) {
+  // Drop blank optional values so the copier uses its defaults.
+  if (Array.isArray(obj)) return obj.map(clean);
+  if (obj && typeof obj === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === "" || v === null || v === undefined) continue;
+      const c = clean(v);
+      if (c && typeof c === "object" && !Array.isArray(c) && Object.keys(c).length === 0) continue;
+      out[k] = c;
+    }
+    return out;
+  }
+  return obj;
+}
+
+function build() {
+  const master = accounts.find((a) => a.role === "master");
+  const out = {};
+  out.settings = clean(general);
+  if (master) {
+    const m = {}; CONN_KEYS.forEach((k) => (m[k] = master.cfg[k]));
+    Object.assign(m, master.masterOpts);
+    out.master = clean(m);
+  }
+  out.slaves = accounts.filter((a) => a !== master).map((a) => {
+    const s = structuredClone(a.cfg);
+    s.enabled = a.role === "slave";
+    return clean(s);
+  });
+  return out;
+}
+
+function markDirty() {
+  dirty = true;
+  $("#saveBtn").disabled = $("#saveBtn2").disabled = false;
+  $("#dirtyNote").textContent = "Unsaved changes";
+}
+function markClean() {
+  dirty = false;
+  $("#saveBtn").disabled = $("#saveBtn2").disabled = true;
+  $("#dirtyNote").textContent = "";
+}
+
+// ---------------------------------------------------------------- render: accounts
+function get(obj, path) { return path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj); }
+function set(obj, path, val) {
+  const keys = path.split("."); const last = keys.pop();
+  const tgt = keys.reduce((o, k) => (o[k] = o[k] && typeof o[k] === "object" ? o[k] : {}), obj);
+  tgt[last] = val;
+}
+
+function input(i, path, label, opts = {}) {
+  const src = opts.src || "cfg";
+  const acc = accounts[i];
+  let v = get(acc[src], path);
+  const attrs = `data-i="${i}" data-src="${src}" data-path="${path}" data-kind="${opts.type || "text"}"`;
+  const help = opts.help ? `<div class="help">${opts.help}</div>` : "";
+  if (opts.type === "check") {
+    const checked = v === undefined ? !!opts.def : !!v;
+    return `<label class="check"><input type="checkbox" ${attrs} ${checked ? "checked" : ""}><span>${label}${opts.help ? `<small>${opts.help}</small>` : ""}</span></label>`;
+  }
+  if (opts.type === "select") {
+    v = v ?? opts.def;
+    return `<div class="field"><label>${label}</label><select ${attrs}>${opts.options.map(([val, txt]) => `<option value="${val}" ${val === v ? "selected" : ""}>${txt}</option>`).join("")}</select>${help}</div>`;
+  }
+  if (opts.type === "map" || opts.type === "list") {
+    const text = opts.type === "map" ? Object.entries(v || {}).map(([a, b]) => `${a} = ${b}`).join("\n") : (v || []).join(", ");
+    const tag = opts.type === "map" ? `<textarea ${attrs} placeholder="${esc(opts.placeholder || "")}">${esc(text)}</textarea>` : `<input type="text" ${attrs} value="${esc(text)}" placeholder="${esc(opts.placeholder || "")}">`;
+    return `<div class="field"><label>${label}</label>${tag}${help}</div>`;
+  }
+  const type = opts.type === "number" ? "number" : opts.type === "password" ? "password" : "text";
+  return `<div class="field"><label>${label}</label><input type="${type}" ${attrs} value="${esc(v ?? "")}" placeholder="${esc(opts.placeholder || "")}" ${opts.step ? `step="${opts.step}"` : ""} ${opts.min !== undefined ? `min="${opts.min}"` : ""} autocomplete="off">${help}</div>`;
+}
+
+function sizingPreview(acc) {
+  const { method, value } = sizingOf(acc.cfg);
+  const lots = acc.cfg.lots || {};
+  const cap = (x) => {
+    if (lots.max_lot && x > lots.max_lot) x = lots.max_lot;
+    if (lots.min_lot && x < lots.min_lot) x = lots.min_lot;
+    return Math.floor(x * 100 + 1e-6) / 100;
+  };
+  const v = Number(value) || 0;
+  if (method === "multiply") return `Master trades <b>1.00</b> lot → this account trades <b>${cap(v).toFixed(2)}</b> lots`;
+  if (method === "divide") return `Master trades <b>1.00</b> lot → this account trades <b>${cap(v ? 1 / v : 0).toFixed(2)}</b> lots`;
+  if (method === "balance" || method === "equity")
+    return `Lots scale with account size${v !== 1 ? `, then ×${v}` : ""}. A 10k master and 100k slave gives <b>${cap(10 * v).toFixed(2)}</b> lots for each 1.00 lot. Different currencies are converted.`;
+  if (method === "fixed") return `Every copied trade is <b>${cap(v).toFixed(2)}</b> lots, whatever the master trades`;
+  return `Each trade risks <b>${v}%</b> of this account's equity at the master's stop loss. Trades without a stop loss are ${lots.risk_no_sl === "multiplier" ? "copied at 1x" : "skipped"}.`;
+}
+
+function renderAccounts() {
+  const box = $("#accounts");
+  if (!accounts.length) { box.innerHTML = `<div class="card empty">No accounts yet. Add your master account first.</div>`; return; }
+  box.innerHTML = accounts.map((acc, i) => {
+    const c = acc.cfg;
+    const roleBtns = ["master", "slave", "off"].map((r) => `<button class="${r} ${acc.role === r ? "on" : ""}" data-role="${r}" data-i="${i}">${{ master: "Master", slave: "Slave", off: "Off" }[r]}</button>`).join("");
+    const conn = `
+      <details open><summary>Connection <span class="hint">which MT5 terminal and account</span></summary><div class="grid">
+        ${input(i, "name", "Account name", { placeholder: "e.g. FTMO 100k" })}
+        ${input(i, "terminal_path", "MT5 terminal path", { placeholder: "C:/MT5/Slave1/terminal64.exe", help: "Each account needs its own MT5 install folder." })}
+        ${input(i, "login", "Login number", { type: "number", help: "Leave blank if the terminal is already logged in." })}
+        ${input(i, "password", "Password", { type: "password", help: "Or write ${MY_PASSWORD} to read it from an environment variable." })}
+        ${input(i, "server", "Server", { placeholder: "Broker-Live" })}
+        ${input(i, "portable", "Portable install", { type: "check", help: "Tick if this MT5 folder was copied rather than installed." })}
+      </div></details>`;
+    let body;
+    if (acc.role === "master") {
+      body = conn + `
+        <details><summary>Master options</summary><div class="grid">
+          ${input(i, "symbol_suffix", "Symbol suffix at this broker", { src: "masterOpts", placeholder: "e.g. .r", help: "Stripped before matching symbols on the slaves." })}
+          ${input(i, "symbol_prefix", "Symbol prefix at this broker", { src: "masterOpts" })}
+          ${input(i, "only_manual_trades", "Only copy trades I place by hand", { src: "masterOpts", type: "check", help: "Ignore trades opened by EAs on the master." })}
+        </div></details>`;
+    } else {
+      const sz = sizingOf(c);
+      const meta = SIZING[sz.method];
+      body = `
+        <details open><summary>Lot size <span class="hint">how big the copied trades are</span></summary>
+          <div class="sizing">
+            <div class="field"><label>Method</label><select data-sizing="method" data-i="${i}">${Object.entries(SIZING).map(([k, s]) => `<option value="${k}" ${k === sz.method ? "selected" : ""}>${s.label}</option>`).join("")}</select></div>
+            <div class="field"><label>${meta.valueLabel}</label><input type="number" data-sizing="value" data-i="${i}" value="${esc(sz.value)}" step="${meta.step}" min="0"></div>
+            <div class="preview" id="preview-${i}">${sizingPreview(acc)}</div>
+          </div>
+          <div class="grid">
+            ${input(i, "lots.max_lot", "Maximum lot per trade", { type: "number", step: "0.01", min: 0, placeholder: "no limit" })}
+            ${input(i, "lots.min_lot", "Minimum lot per trade", { type: "number", step: "0.01", min: 0, placeholder: "broker minimum" })}
+            ${input(i, "lots.round_up_to_min_lot", "Trade the broker minimum when the result is smaller", { type: "check", help: "Otherwise those trades are skipped." })}
+          </div>
+        </details>
+        <details open><summary>Trade copying ${c.reverse ? '<span class="reverse-on">REVERSE ON</span>' : ""}</summary><div class="grid">
+          ${input(i, "reverse", "Reverse trades", { type: "check", help: "Buy becomes sell; SL and TP swap." })}
+          ${input(i, "direction", "Directions to copy", { type: "select", def: "both", options: [["both", "Buys and sells"], ["buy_only", "Buys only"], ["sell_only", "Sells only"]] })}
+          ${input(i, "risk.copy_sl", "Copy stop loss", { type: "check", def: true })}
+          ${input(i, "risk.copy_tp", "Copy take profit", { type: "check", def: true })}
+          ${input(i, "copy_pending_orders", "Copy pending orders", { type: "check", def: true })}
+          ${input(i, "pending_fill_to_market", "If the master's pending order fills first, enter at market", { type: "check", def: true })}
+          ${input(i, "copy_existing_on_start", "Copy trades already open when first started", { type: "check" })}
+          ${input(i, "dry_run", "Dry run (log only, place no trades)", { type: "check" })}
+        </div></details>
+        <details><summary>Risk limits</summary><div class="grid">
+          ${input(i, "risk.max_open_positions", "Max open trades", { type: "number", min: 0, placeholder: "no limit" })}
+          ${input(i, "risk.max_drawdown_percent", "Stop new trades after drawdown of (%)", { type: "number", step: "0.5", min: 0, placeholder: "off" })}
+          ${input(i, "risk.max_price_deviation_points", "Skip if price moved more than (points)", { type: "number", min: 0, placeholder: "off" })}
+          ${input(i, "risk.slippage_points", "Allowed slippage (points)", { type: "number", min: 0, placeholder: "20" })}
+        </div></details>
+        <details><summary>Symbols <span class="hint">different names at this broker</span></summary><div class="grid">
+          ${input(i, "symbols.suffix", "Symbol suffix", { placeholder: "e.g. .pro or m" })}
+          ${input(i, "symbols.prefix", "Symbol prefix" )}
+          ${input(i, "symbols.map", "Rename symbols (one per line)", { type: "map", placeholder: "XAUUSD = GOLD\nUS30 = DJ30" })}
+          ${input(i, "symbols.include", "Only copy these symbols", { type: "list", placeholder: "blank = all symbols" })}
+          ${input(i, "symbols.exclude", "Never copy these symbols", { type: "list", placeholder: "e.g. BTCUSD, US30" })}
+        </div></details>
+        ${conn.replace("<details open>", "<details>")}
+        <details><summary>Advanced</summary><div class="grid">
+          ${input(i, "magic", "Magic number", { type: "number", help: "Tags this copier's trades on the account." })}
+          ${input(i, "lots.normalize_contract_size", "Adjust for different contract sizes", { type: "check", def: true })}
+          ${input(i, "lots.risk_no_sl", "Risk % mode, trade has no stop loss", { type: "select", def: "skip", options: [["skip", "Skip the trade"], ["multiplier", "Copy at 1x"]] })}
+          ${input(i, "risk.max_retries", "Retries for a failed order", { type: "number", min: 1, placeholder: "5" })}
+          ${input(i, "fx_rates", "Manual exchange rates (one per line)", { type: "map", placeholder: "GBPUSD = 1.27" })}
+        </div></details>`;
+    }
+    return `<div class="card" data-card="${i}">
+      <div class="card-head">
+        <span class="name">${esc(c.name || "Unnamed account")}</span>
+        <span class="role">${roleBtns}</span>
+        <span class="spacer"></span>
+        <button class="small" data-dup="${i}">Duplicate</button>
+        <button class="small danger" data-del="${i}">Remove</button>
+      </div>
+      <div class="card-body">${body}</div></div>`;
+  }).join("");
+}
+
+function parseField(el) {
+  const kind = el.dataset.kind;
+  if (kind === "check") return el.checked;
+  if (kind === "number") return el.value === "" ? null : Number(el.value);
+  if (kind === "map") {
+    const out = {};
+    el.value.split("\n").forEach((line) => {
+      const [a, ...rest] = line.split(/[=:]/); const b = rest.join("=").trim();
+      if (a && a.trim() && b) out[a.trim()] = el.dataset.path === "fx_rates" ? Number(b) : b;
+    });
+    return out;
+  }
+  if (kind === "list") return el.value.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
+  return el.value;
+}
+
+$("#accounts").addEventListener("input", (e) => {
+  const el = e.target; const i = Number(el.dataset.i); const acc = accounts[i];
+  if (!acc) return;
+  if (el.dataset.sizing) {
+    const card = el.closest(".card");
+    const method = $('[data-sizing="method"]', card).value;
+    let value = $('[data-sizing="value"]', card).value;
+    if (el.dataset.sizing === "method") { value = SIZING[method].def; applySizing(acc.cfg, method, value); markDirty(); renderAccounts(); return; }
+    applySizing(acc.cfg, method, value);
+  } else if (el.dataset.path) {
+    set(acc[el.dataset.src], el.dataset.path, parseField(el));
+    if (el.dataset.path === "name") $(".name", el.closest(".card")).textContent = el.value || "Unnamed account";
+    if (el.dataset.path === "reverse") { markDirty(); renderAccounts(); return; }
+  }
+  const p = $(`#preview-${i}`); if (p) p.innerHTML = sizingPreview(acc);
+  markDirty();
+});
+
+$("#accounts").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.role) {
+    const i = Number(b.dataset.i); const role = b.dataset.role;
+    if (role === "master") accounts.forEach((a, j) => { if (j !== i && a.role === "master") a.role = "slave"; });
+    if (accounts[i].role === "master" && role !== "master") toast("Choose another account as the master before saving");
+    accounts[i].role = role; accounts.forEach(ensureSlaveDefaults); markDirty(); renderAccounts();
+  } else if (b.dataset.del) {
+    const i = Number(b.dataset.del);
+    if (confirm(`Remove "${accounts[i].cfg.name || "this account"}" from the copier?`)) { accounts.splice(i, 1); markDirty(); renderAccounts(); }
+  } else if (b.dataset.dup) {
+    const src = accounts[Number(b.dataset.dup)];
+    const copy = { role: src.role === "master" ? "slave" : src.role, cfg: structuredClone(src.cfg), masterOpts: {} };
+    copy.cfg.name = (copy.cfg.name || "account") + " copy";
+    copy.cfg.terminal_path = ""; copy.cfg.login = null; copy.cfg.password = ""; copy.cfg.magic = nextMagic();
+    ensureSlaveDefaults(copy); accounts.push(copy); markDirty(); renderAccounts();
+    document.querySelector(`[data-card="${accounts.length - 1}"]`).scrollIntoView({ behavior: "smooth" });
+  }
+});
+
+function nextMagic() { return Math.max(770000, ...accounts.map((a) => Number(a.cfg.magic) || 0)) + 1; }
+function ensureSlaveDefaults(acc) {
+  if (acc.role === "master") return;
+  if (!acc.cfg.magic) acc.cfg.magic = nextMagic();
+  if (!acc.cfg.lots) acc.cfg.lots = { mode: "multiplier", multiplier: 1 };
+}
+
+$("#addBtn").onclick = () => {
+  const hasMaster = accounts.some((a) => a.role === "master");
+  const n = accounts.length;
+  const acc = { role: hasMaster ? "slave" : "master", cfg: { name: hasMaster ? `Slave ${n}` : "Master", terminal_path: "" }, masterOpts: {} };
+  ensureSlaveDefaults(acc); accounts.push(acc); markDirty(); renderAccounts();
+  document.querySelector(`[data-card="${n}"]`).scrollIntoView({ behavior: "smooth" });
+};
+
+// ---------------------------------------------------------------- general tab
+function renderGeneral() {
+  const f = (key, label, opts = {}) => {
+    const v = general[key] ?? "";
+    if (opts.options) return `<div class="field"><label>${label}</label><select data-g="${key}">${opts.options.map((o) => `<option ${o === (v || opts.def) ? "selected" : ""}>${o}</option>`).join("")}</select></div>`;
+    return `<div class="field"><label>${label}</label><input type="${opts.type || "text"}" data-g="${key}" value="${esc(v)}" placeholder="${esc(opts.placeholder || "")}">${opts.help ? `<div class="help">${opts.help}</div>` : ""}</div>`;
+  };
+  $("#generalFields").innerHTML = [
+    f("poll_interval_ms", "Check the master every (ms)", { type: "number", placeholder: "250" }),
+    f("log_level", "Log detail", { options: ["INFO", "DEBUG", "WARNING"], def: "INFO" }),
+    f("log_dir", "Log folder", { placeholder: "logs" }),
+    f("state_dir", "State folder", { placeholder: "state", help: "Where the copier remembers which trades it copied." }),
+  ].join("");
+}
+$("#generalFields").addEventListener("input", (e) => {
+  const k = e.target.dataset.g; if (!k) return;
+  general[k] = e.target.type === "number" ? (e.target.value === "" ? null : Number(e.target.value)) : e.target.value;
+  markDirty();
+});
+
+// ---------------------------------------------------------------- save / start / stop
+async function save() {
+  const masters = accounts.filter((a) => a.role === "master");
+  if (masters.length !== 1) { toast("Pick exactly one account as the master"); return false; }
+  if (!accounts.some((a) => a.role === "slave")) { toast("Set at least one account to Slave"); return false; }
+  try {
+    const cfg = build();
+    const res = await api("/api/config", { config: cfg });
+    rawConfig = cfg; markClean(); clearBanner("save"); clearBanner("new");
+    if (res.running) banner("save", "warn", "Saved. The copier is still running with the old settings.", [["Restart now", restart]]);
+    else toast("Settings saved");
+    return true;
+  } catch (err) {
+    banner("save", "bad", "Couldn't save: " + err.message);
+    return false;
+  }
+}
+$("#saveBtn").onclick = save; $("#saveBtn2").onclick = save;
+
+async function start() {
+  if (dirty && !(await save())) return;
+  try { await api("/api/start", {}); toast("Copier starting…"); clearBanner("start"); poll(); }
+  catch (err) { banner("start", "bad", "Couldn't start: " + err.message); }
+}
+async function stop() {
+  $("#stopBtn").disabled = true;
+  try { await api("/api/stop", {}); toast("Copier stopped"); } catch (err) { toast(err.message); }
+  $("#stopBtn").disabled = false; poll();
+}
+async function restart() {
+  clearBanner("save");
+  try { await api("/api/restart", {}); toast("Copier restarted with the new settings"); } catch (err) { banner("start", "bad", "Couldn't restart: " + err.message); }
+  poll();
+}
+$("#startBtn").onclick = start; $("#stopBtn").onclick = stop;
+
+$("#checkBtn").onclick = async () => {
+  if (dirty && !(await save())) return;
+  const b = $("#checkBtn"); b.disabled = true; b.textContent = "Checking…";
+  try { const r = await api("/api/check", {}); $("#checkOut").textContent = r.output; $("#checkDialog").showModal(); }
+  catch (err) { toast(err.message, 4000); }
+  b.disabled = false; b.textContent = "Check connections";
+};
+
+// ---------------------------------------------------------------- banners
+const banners = {};
+function banner(key, kind, text, actions = []) {
+  banners[key] = { kind, text, actions }; drawBanners();
+}
+function clearBanner(key) { delete banners[key]; drawBanners(); }
+function drawBanners() {
+  const box = $("#banners"); box.innerHTML = "";
+  Object.entries(banners).forEach(([key, b]) => {
+    const div = document.createElement("div"); div.className = `banner ${b.kind}`;
+    div.innerHTML = `<span style="flex:1">${esc(b.text)}</span>`;
+    b.actions.forEach(([label, fn]) => { const btn = document.createElement("button"); btn.className = "small"; btn.textContent = label; btn.onclick = fn; div.appendChild(btn); });
+    const x = document.createElement("button"); x.className = "small"; x.textContent = "Dismiss"; x.onclick = () => clearBanner(key); div.appendChild(x);
+    box.appendChild(div);
+  });
+}
+
+// ---------------------------------------------------------------- status
+const money = (n, ccy) => (n == null ? "–" : Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (ccy ? " " + ccy : ""));
+function ago(t) { const s = Math.round(Date.now() / 1000 - t); return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`; }
+
+function renderStatus(st) {
+  lastStatus = st;
+  const running = st.process.running || st.running_elsewhere;
+  $("#runDot").className = "dot " + (running ? "good" : st.process.exit_code ? "bad" : "");
+  $("#runText").textContent = st.process.running ? "Running" : st.running_elsewhere ? "Running (started outside the panel)" : st.process.exit_code ? "Stopped with an error" : "Stopped";
+  $("#startBtn").hidden = running; $("#stopBtn").hidden = !st.process.running;
+  $("#checkBtn").disabled = running;
+  if (!st.process.running && st.process.exit_code) {
+    banner("crash", "bad", "The copier stopped with an error. Last output: " + (st.output.slice(-3).join(" | ") || "none"));
+  } else clearBanner("crash");
+
+  const grid = $("#statusGrid");
+  const accs = st.accounts.slice().sort((a, b) => (a.role === "master" ? -1 : b.role === "master" ? 1 : a.name.localeCompare(b.name)));
+  if (!accs.length) { grid.innerHTML = `<div class="stat muted">Start the copier to see live account status here.</div>`; }
+  else grid.innerHTML = accs.map((a) => {
+    const live = a.fresh && a.state !== "stopped";
+    const ok = live && a.state === "running" && a.connected !== false;
+    const dot = !live ? "" : ok ? "good" : a.state === "connecting" ? "warn" : "bad";
+    const stateText = !live ? "Not running" : a.state === "connecting" ? "Connecting…" : a.connected === false ? "Broker disconnected" : "Connected";
+    const rows = [];
+    if (a.role === "master") { rows.push(["Open positions", a.positions ?? "–"], ["Pending orders", a.pending_orders ?? "–"]); }
+    else {
+      rows.push(["Copied trades open", a.copied_trades ?? "–"]);
+      if (a.algo_trading === false) rows.push(["Algo Trading", '<span style="color:var(--bad)">OFF</span>']);
+      if (a.master_feed === false) rows.push(["Master feed", '<span style="color:var(--warn)">waiting</span>']);
+      if (a.dry_run) rows.push(["Mode", "Dry run"]);
+    }
+    rows.push(["Updated", a.updated ? ago(a.updated) : "–"]);
+    return `<div class="stat">
+      <div class="top"><span class="dot ${dot}"></span><span class="tag ${a.role}">${a.role}</span><b>${esc(a.name)}</b></div>
+      <div class="big">${money(a.equity, a.currency)}</div>
+      <div class="row"><span>${stateText}</span><b>${a.login ? "#" + a.login : ""}</b></div>
+      <div class="row"><span>Balance</span><b>${money(a.balance, a.currency)}</b></div>
+      ${rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")}
+      ${live && a.error ? `<div class="err">${esc(a.error)}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  const log = $("#log");
+  const html = (st.log.length ? st.log : st.output).map((l) => {
+    const cls = /\b(ERROR|CRITICAL)\b/.test(l) ? "e" : /\bWARNING\b/.test(l) ? "w" : "";
+    return cls ? `<span class="${cls}">${esc(l)}</span>` : esc(l);
+  }).join("\n") || "No activity yet.";
+  if (log._last !== html) { log.innerHTML = html; log._last = html; if ($("#followLog").checked) log.scrollTop = log.scrollHeight; }
+}
+
+let pollTimer;
+async function poll() {
+  clearTimeout(pollTimer);
+  try { renderStatus(await api("/api/status")); clearBanner("offline"); }
+  catch { banner("offline", "bad", "Lost contact with the control panel. Is its window still open?"); }
+  pollTimer = setTimeout(poll, 2000);
+}
+
+// ---------------------------------------------------------------- tabs / boot
+document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("active", x === b));
+  ["accounts", "status", "general"].forEach((t) => ($("#tab-" + t).hidden = t !== b.dataset.tab));
+}));
+window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+(async function boot() {
+  try {
+    const r = await api("/api/config");
+    load(r.config); $("#cfgPath").textContent = r.path;
+    if (!r.exists) {
+      banner("new", "warn", "No config.yaml yet. These are example settings: edit them and press Save.");
+      markDirty();
+    } else markClean();
+    renderAccounts(); renderGeneral();
+  } catch (err) { banner("load", "bad", "Couldn't load settings: " + err.message); }
+  poll();
+})();
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@
     python -m trade_copier validate   check the config file
     python -m trade_copier check      connect to every terminal and report
     python -m trade_copier run        start copying
+    python -m trade_copier ui         open the control panel in your browser
 """
 
 from __future__ import annotations
@@ -93,12 +94,23 @@ def cmd_run(config) -> int:
     return 0
 
 
+def cmd_ui(args) -> int:
+    from .ui.server import serve
+
+    serve(args.config, port=args.port, open_browser=not args.no_browser)
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="trade_copier", description="MetaTrader 5 trade copier")
     parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument("command", choices=["validate", "check", "run"])
+    parser.add_argument("command", choices=["validate", "check", "run", "ui"])
     parser.add_argument("-c", "--config", default="config.yaml", help="path to config file (default config.yaml)")
+    parser.add_argument("--port", type=int, default=8765, help="control panel port (ui only)")
+    parser.add_argument("--no-browser", action="store_true", help="don't open the browser (ui only)")
     args = parser.parse_args(argv)
+    if args.command == "ui":  # the panel works even before a config file exists
+        return cmd_ui(args)
     try:
         config = load_config(args.config)
     except ConfigError as exc:

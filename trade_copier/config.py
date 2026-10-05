@@ -191,13 +191,19 @@ def _validate_slave(s: SlaveConfig, where: str) -> None:
     s.fx_rates = {str(k).upper(): float(v) for k, v in (s.fx_rates or {}).items()}
 
 
-def parse_config(raw: dict) -> Config:
+def parse_config(raw: dict, expand_env: bool = True) -> Config:
+    """Build a Config from the parsed YAML.
+
+    ``expand_env=False`` leaves ``${VAR}`` references as they are, which the
+    control panel uses to validate a config without needing the passwords.
+    """
     if not isinstance(raw, dict):
         raise ConfigError("config file must contain a mapping at the top level")
     unknown = sorted(set(raw) - {"master", "slaves", "settings"})
     if unknown:
         raise ConfigError(f"unknown top-level section(s) {', '.join(unknown)}")
-    raw = _expand_env(raw, "config")
+    if expand_env:
+        raw = _expand_env(raw, "config")
 
     settings = _build(Settings, raw.get("settings"), "settings")
     if "master" not in raw:
