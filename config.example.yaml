@@ -1,0 +1,95 @@
+# Trade Copier configuration
+# Copy this file to config.yaml and edit it. config.yaml is ignored by git so
+# your account details never get pushed to GitHub.
+#
+# Passwords: write ${SOME_NAME} and set an environment variable of that name
+# (see README), or leave login/password/server out entirely if the terminal
+# is already logged in to the right account.
+
+settings:
+  poll_interval_ms: 250        # how often the master is checked
+  state_dir: state             # where the copier remembers which trade maps to which
+  log_dir: logs
+  log_level: INFO              # DEBUG for more detail
+
+master:
+  name: master
+  terminal_path: "C:/MT5/Master/terminal64.exe"
+  login: 10000001
+  password: ${MT5_MASTER_PASSWORD}
+  server: "YourBroker-Demo"
+  portable: false              # true if you installed this terminal with /portable
+  # If your master broker adds a suffix/prefix to symbols (e.g. EURUSD.r), put it
+  # here so it can be stripped before mapping to the slave's names.
+  symbol_prefix: ""
+  symbol_suffix: ""
+  only_manual_trades: false    # true = ignore trades placed by EAs on the master
+
+slaves:
+  # Example 1: a 100k account copying a 10k master at 10x size.
+  - name: big-account
+    enabled: true
+    terminal_path: "C:/MT5/Slave1/terminal64.exe"
+    login: 20000001
+    password: ${MT5_SLAVE1_PASSWORD}
+    server: "YourBroker-Live"
+    magic: 770001              # tags this copier's trades on the slave
+    dry_run: false             # true = log what would happen, send nothing
+
+    lots:
+      # mode options:
+      #   multiplier     slave lot = master lot x multiplier
+      #   balance_ratio  slave lot = master lot x (slave balance / master balance) x multiplier
+      #                  (converts currencies automatically, e.g. GBP master -> USD slave)
+      #   equity_ratio   same as balance_ratio but using equity
+      #   fixed          always trade fixed_lot
+      #   risk_percent   risk risk_percent of slave equity, using the master's stop loss
+      mode: multiplier
+      multiplier: 10
+      max_lot: 20              # never open more than this (optional)
+      min_lot: null            # never open less than this (optional)
+      round_up_to_min_lot: false   # if the result is below the broker minimum: true = trade the minimum, false = skip
+      normalize_contract_size: true  # adjust when brokers use different contract sizes (e.g. gold 100oz vs 10oz)
+
+    risk:
+      copy_sl: true
+      copy_tp: true
+      slippage_points: 20
+      max_price_deviation_points: null   # skip if the slave price is this many points away from the master entry
+      max_open_positions: null
+      max_drawdown_percent: null         # stop copying NEW trades after this % drop from peak equity
+      max_retries: 5
+
+    symbols:
+      prefix: ""
+      suffix: ""
+      map: {}                  # e.g. {XAUUSD: GOLD, US30: DJ30}
+      include: []              # only copy these symbols (empty = all)
+      exclude: []              # never copy these symbols
+
+    copy_existing_on_start: false   # copy trades already open on the master the first time the copier runs
+    copy_pending_orders: true
+    pending_fill_to_market: true    # if the master's pending order fills before the slave's, convert it to a market order
+    reverse: false                  # true = take the opposite trade
+    direction: both                 # both, buy_only or sell_only
+
+  # Example 2: a USD account at a different broker, sized automatically by balance.
+  - name: usd-prop-account
+    enabled: false
+    terminal_path: "C:/MT5/Slave2/terminal64.exe"
+    login: 30000001
+    password: ${MT5_SLAVE2_PASSWORD}
+    server: "OtherBroker-Server"
+    magic: 770002
+    lots:
+      mode: balance_ratio
+      multiplier: 1.0
+      max_lot: 5
+    risk:
+      max_drawdown_percent: 8
+    symbols:
+      suffix: ".pro"
+      map:
+        XAUUSD: "GOLD.pro"
+    # Manual exchange rates, only used if the slave broker has no quote for the pair.
+    fx_rates: {}
